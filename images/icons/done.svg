@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M0 20C0 8.9543 8.9543 0 20 0C31.0457 0 40 8.9543 40 20C40 31.0457 31.0457 40 20 40C8.9543 40 0 31.0457 0 20Z" fill="#37C93B" fill-rule="evenodd" />
+    <g transform="translate(8 8)">
+      <path d="M0 0L12 12L6 18" fill="none" stroke-width="1.8" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" transform="matrix(0 1 -1 0 21 6)" />
+    </g>
+  </g>
+</svg>
