@@ -71,69 +71,76 @@ ymaps.ready(() => {
     calcButton.addEventListener('click', () => {
         // Удаляем старый маршрут с карты.
         if (mapRoute) {
+            mapRoute.model.events.remove('requestsuccess');
+            mapRoute.model.events.remove('requestfail');
             map.geoObjects.remove(mapRoute);
             mapRoute = null;
         }
 
+        // Сбрасываем результаты предыдущего расчета
+        calculation = null;
+        renderInfo();
+        submitButton.disabled = true;
+
         // Создаем новый маршрут по введенным точкам.
         mapRoute = new ymaps.multiRouter.MultiRoute({referencePoints: [fromInput.value, toInput.value]}, {boundsAutoApply: false});
+
+        // Успешно получили маршрут — берём дистанцию и время.
+        mapRoute.model.events.add('requestsuccess', () => {
+            try {
+                // Берем активный маршрут (основной).
+                const activeRoute = mapRoute.getActiveRoute();
+                if (!activeRoute) {
+                    return failedCalculation();
+                }
+
+                // Извлекаем расстояние и длительность.
+                const km = activeRoute.properties.get('distance').value / 1000;
+                // Считаем цену: тариф * км, округляем вверх.
+                const size = document.querySelector('.main-size-card.is-active').dataset.value;
+                // Применяем минимальный порог.
+                let total = Math.max(MIN_BY_SIZE[size], Math.ceil(km * RATES[size]));
+                // Просчитываем длительность доставки
+                let duration = Math.min(30, 1 + Math.ceil(km / 80));
+
+                // Увеличиваем на 15% и сокращаем время на 30%
+                const speed = document.querySelector('.main-speed-card.is-active').dataset.value;
+                if (speed === 'fast') {
+                    total = Math.ceil(total * 1.15);
+                    duration = Math.ceil(duration - (duration * 0.30));
+                }
+
+                calculation = {
+                    from: fromInput.value,
+                    to: toInput.value,
+                    size: size,
+                    distance: km.toFixed(1),
+                    duration: duration,
+                    rate: RATES[size],
+                    total: total,
+                    speed: speed
+                };
+
+                // Выводим результат на экран.
+                renderInfo({
+                    distanceText: `${calculation.distance} км`,
+                    durationText: `${calculation.duration} дн.`,
+                    rateText: `${calculation.rate} ₽/км`,
+                    totalText: calculation.total
+                });
+
+                submitButton.disabled = false;
+            } catch (err) {
+                failedCalculation();
+            }
+        });
+
+        // Ошибка запроса маршрута.
+        mapRoute.model.events.add('requestfail', failedCalculation);
 
         // Добавляем новый маршрут на карту.
         map.geoObjects.add(mapRoute);
     });
-
-    // Успешно получили маршрут — берём дистанцию и время.
-    mapRoute.model.events.add('requestsuccess', () => {
-        try {
-            // Берем активный маршрут (основной).
-            const activeRoute = mapRoute.getActiveRoute();
-            if (!activeRoute) {
-                return failedCalculation();
-            }
-
-            // Извлекаем расстояние и длительность.
-            const km = activeRoute.properties.get('distance').value / 1000;
-            // Считаем цену: тариф * км, округляем вверх.
-            const size = document.querySelector('.main-size-card.is-active').dataset.value;
-            // Применяем минимальный порог.
-            let total = Math.max(MIN_BY_SIZE[size], Math.ceil(km * RATES[size]));
-            // Просчитываем длительность доставки
-            let duration = Math.min(30, 1 + Math.ceil(km / 80));
-
-            // Увеличиваем на 15% и сокращаем время на 30%
-            const speed = document.querySelector('.main-speed-card.is-active').dataset.value;
-            if (speed === 'fast') {
-                total = Math.ceil(total * 1.15);
-                duration = Math.ceil(duration - (duration * 0.30));
-            }
-
-            calculation = {
-                from: fromInput.value,
-                to: toInput.value,
-                size: size,
-                distance: km.toFixed(1),
-                duration: duration,
-                rate: RATES[size],
-                total: total,
-                speed: speed
-            };
-
-            // Выводим результат на экран.
-            renderInfo({
-                distanceText: `${calculation.distance} км`,
-                durationText: `${calculation.duration} дн.`,
-                rateText: `${calculation.rate} ₽/км`,
-                totalText: calculation.total
-            });
-
-            submitButton.disabled = false;
-        } catch (err) {
-            failedCalculation();
-        }
-    });
-
-    // Ошибка запроса маршрута.
-    mapRoute.model.events.add('requestfail', failedCalculation);
 
     // Отправка заявки (демо без реального бэкенда).
     submitButton.addEventListener('click', async () => {
